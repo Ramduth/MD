@@ -1,0 +1,13 @@
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Access-Control-Allow-Origin: http://localhost:8081
+Vary: Origin
+Access-Control-Allow-Credentials: true
+Content-Type: application/pdf
+Content-Disposition: attachment; filename="my-custom-report.pdf"
+Content-Length: 15941
+ETag: W/"3e45-Y8jdrGiwrLPlXTN/QGbgcx9wxTs"
+Date: Wed, 13 Aug 2025 10:22:44 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
