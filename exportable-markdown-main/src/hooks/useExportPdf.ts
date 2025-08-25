@@ -1,8 +1,6 @@
 import { useCallback } from 'react';
-import { toPng } from 'html-to-image';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { PDFDocument, PDFPage, rgb } from 'pdf-lib';
 import { formatFilename } from '@/utils/formatters';
 
 export const useExportPdf = () => {
@@ -328,14 +326,16 @@ export const useExportPdf = () => {
         });
         dataUrl = canvas.toDataURL('image/png', 1.0);
       } catch (html2canvasError) {
-        console.warn('html2canvas failed, trying html-to-image:', html2canvasError);
-        // Fallback to html-to-image
-        dataUrl = await toPng(previewElement, {
-          quality: 1.0,
-          pixelRatio: 2, // Higher pixel ratio for better quality
+        console.warn('html2canvas failed, trying fallback settings:', html2canvasError);
+        // Fallback using html2canvas with different settings
+        const fallbackCanvas = await html2canvas(previewElement, {
           backgroundColor: '#ffffff',
-          skipFonts: false,
+          scale: 1,
+          useCORS: true,
+          allowTaint: true,
+          logging: false,
         });
+        dataUrl = fallbackCanvas.toDataURL('image/png', 1.0);
       }
 
       // Validate the data URL
