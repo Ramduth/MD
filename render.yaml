@@ -1,0 +1,34 @@
+services:
+  # Backend API Service
+  - type: web
+    name: markdown-editor-api
+    runtime: node
+    repo: https://github.com/YOUR_USERNAME/YOUR_REPO
+    rootDir: exportable-markdown-node
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: PORT
+        value: 10000
+      - key: CORS_ORIGIN
+        sync: false
+
+  # Frontend Static Site
+  - type: web
+    name: markdown-editor-frontend
+    runtime: static
+    repo: https://github.com/YOUR_USERNAME/YOUR_REPO
+    rootDir: exportable-markdown-main
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: SAMEORIGIN
+    envVars:
+      - key: VITE_API_URL
+        sync: false
