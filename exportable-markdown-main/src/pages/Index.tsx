@@ -2,8 +2,7 @@ import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { useMarkdownState } from '@/hooks/useMarkdownState';
 import { useHistory } from '@/hooks/useHistory';
-import { useBackend } from '@/hooks/useBackend';
-import { useExportPdfBackend } from '@/hooks/useExportPdf';
+import { useExportPdf } from '@/hooks/useExportPdf';
 import { useExportDocx } from '@/hooks/useExportDocx';
 import { useWhatsappShare } from '@/hooks/useWhatsappShare';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -42,12 +41,8 @@ const Index = () => {
     clearHistory,
   } = useHistory();
 
-  const {
-    backendUrl,
-    updateBackendUrl,
-  } = useBackend();
 
-  const { exportToPdf } = useExportPdfBackend();
+  const { exportToPdf } = useExportPdf();
   const { exportToDocx } = useExportDocx();
   const { shareMarkdown, shareUrl } = useWhatsappShare();
   const { showSuccess, showError, showInfo, toasts, removeToast } = useToasts();
@@ -73,12 +68,12 @@ const Index = () => {
   };
 
   const handleExportPdf = async () => {
-    if (!content) return;
+    if (!content || !previewRef.current) return;
     
     setIsExporting(true);
     try {
       await exportToPdf(
-        content,
+        previewRef.current,
         (filename) => {
           addToHistory(filename, 'pdf', content);
           showSuccess('PDF exported successfully', filename);
@@ -125,10 +120,11 @@ const Index = () => {
 
   const handleHistoryDownload = async (item: any) => {
     if (item.type === 'pdf') {
+      if (!previewRef.current) return;
       setIsExporting(true);
       try {
         await exportToPdf(
-          item.content,
+          previewRef.current,
           () => showSuccess('PDF re-downloaded', item.name),
           (error) => showError('Download failed', error.message)
         );
@@ -245,8 +241,6 @@ const Index = () => {
       <SettingsModal
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
-        backendUrl={backendUrl}
-        onBackendUrlChange={updateBackendUrl}
       />
 
       {/* Toast Container */}
