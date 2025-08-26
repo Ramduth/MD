@@ -4,6 +4,177 @@ import jsPDF from 'jspdf';
 import { formatFilename } from '@/utils/formatters';
 
 export const useExportPdf = () => {
+  // Text-based PDF export for mobile (maintains text selectability)
+  const exportToPdfText = useCallback(async (
+    previewElement: HTMLElement,
+    onSuccess?: (filename: string) => void,
+    onError?: (error: Error) => void
+  ) => {
+    try {
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      // Page dimensions
+      const pageHeight = pdf.internal.pageSize.height;
+      const pageWidth = pdf.internal.pageSize.width;
+      const margin = 15;
+      const maxWidth = pageWidth - (margin * 2);
+      let yPosition = margin;
+      
+      // Set default font
+      pdf.setFontSize(11);
+      
+      // Process all elements in the preview
+      const processElement = (element: Element) => {
+        // Check if we need a new page
+        if (yPosition > pageHeight - 20) {
+          pdf.addPage();
+          yPosition = margin;
+        }
+
+        const tagName = element.tagName.toLowerCase();
+        const text = (element.textContent || '').trim();
+        
+        if (!text) {
+          // Add small spacing for empty elements
+          if (tagName === 'p' || tagName === 'div') {
+            yPosition += 3;
+          }
+          return;
+        }
+
+        // Handle different element types
+        switch (tagName) {
+          case 'h1':
+            pdf.setFontSize(20);
+            pdf.setFont(undefined, 'bold');
+            const h1Text = pdf.splitTextToSize(text, maxWidth);
+            pdf.text(h1Text, margin, yPosition);
+            yPosition += h1Text.length * 8 + 4;
+            pdf.setFont(undefined, 'normal');
+            pdf.setFontSize(11);
+            break;
+            
+          case 'h2':
+            pdf.setFontSize(16);
+            pdf.setFont(undefined, 'bold');
+            const h2Text = pdf.splitTextToSize(text, maxWidth);
+            pdf.text(h2Text, margin, yPosition);
+            yPosition += h2Text.length * 7 + 3;
+            pdf.setFont(undefined, 'normal');
+            pdf.setFontSize(11);
+            break;
+            
+          case 'h3':
+            pdf.setFontSize(14);
+            pdf.setFont(undefined, 'bold');
+            const h3Text = pdf.splitTextToSize(text, maxWidth);
+            pdf.text(h3Text, margin, yPosition);
+            yPosition += h3Text.length * 6 + 2;
+            pdf.setFont(undefined, 'normal');
+            pdf.setFontSize(11);
+            break;
+            
+          case 'h4':
+          case 'h5':
+          case 'h6':
+            pdf.setFontSize(12);
+            pdf.setFont(undefined, 'bold');
+            const h456Text = pdf.splitTextToSize(text, maxWidth);
+            pdf.text(h456Text, margin, yPosition);
+            yPosition += h456Text.length * 5 + 2;
+            pdf.setFont(undefined, 'normal');
+            pdf.setFontSize(11);
+            break;
+            
+          case 'pre':
+          case 'code':
+            pdf.setFontSize(10);
+            pdf.setFont('courier', 'normal');
+            const codeText = pdf.splitTextToSize(text, maxWidth - 10);
+            // Add background effect with indentation
+            pdf.text(codeText, margin + 5, yPosition);
+            yPosition += codeText.length * 4 + 3;
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(11);
+            break;
+            
+          case 'blockquote':
+            pdf.setFontSize(11);
+            pdf.setFont(undefined, 'italic');
+            const quoteText = pdf.splitTextToSize(text, maxWidth - 10);
+            pdf.text(quoteText, margin + 5, yPosition);
+            yPosition += quoteText.length * 5 + 2;
+            pdf.setFont(undefined, 'normal');
+            break;
+            
+          case 'ul':
+          case 'ol':
+            // Process list items
+            const listItems = element.querySelectorAll('li');
+            listItems.forEach((li, index) => {
+              if (yPosition > pageHeight - 20) {
+                pdf.addPage();
+                yPosition = margin;
+              }
+              const bullet = tagName === 'ol' ? `${index + 1}. ` : '• ';
+              const liText = (li.textContent || '').trim();
+              const bulletText = pdf.splitTextToSize(bullet + liText, maxWidth - 5);
+              pdf.text(bulletText, margin + 5, yPosition);
+              yPosition += bulletText.length * 5 + 1;
+            });
+            yPosition += 2;
+            break;
+            
+          case 'p':
+          default:
+            // Regular paragraph text
+            const splitText = pdf.splitTextToSize(text, maxWidth);
+            pdf.text(splitText, margin, yPosition);
+            yPosition += splitText.length * 5 + 3;
+            break;
+        }
+      };
+
+      // Process all child elements of the preview
+      const elements = previewElement.querySelectorAll('h1, h2, h3, h4, h5, h6, p, pre, code, blockquote, ul, ol, div');
+      elements.forEach(processElement);
+      
+      // Generate filename
+      const filename = formatFilename('markdown-export', 'pdf');
+      
+      // Try to save the PDF
+      try {
+        pdf.save(filename);
+        onSuccess?.(filename);
+      } catch (saveError) {
+        console.error('Direct save failed, trying blob approach:', saveError);
+        
+        // Fallback: Create blob and trigger download manually
+        const pdfBlob = pdf.output('blob');
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(pdfBlob);
+        link.download = filename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        
+        // Clean up
+        setTimeout(() => {
+          document.body.removeChild(link);
+          URL.revokeObjectURL(link.href);
+        }, 100);
+        
+        onSuccess?.(filename);
+      }
+    } catch (error) {
+      console.error('Text-based PDF export failed:', error);
+      onError?.(error as Error);
+    }
+  }, []);
   // Browser-native print-to-PDF (best quality, like Puppeteer)
   const exportToPdfNative = useCallback(async (
     previewElement: HTMLElement,
@@ -470,18 +641,19 @@ export const useExportPdf = () => {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     if (isMobile) {
-      // Use image-based PDF for mobile (more reliable)
-      await exportToPdfAsImage(previewElement, onSuccess, onError);
+      // Use text-based PDF for mobile (maintains text selectability)
+      await exportToPdfText(previewElement, onSuccess, onError);
     } else {
       // Use native print for desktop (better quality)
       await exportToPdfNative(previewElement, onSuccess, onError);
     }
-  }, [exportToPdfNative, exportToPdfAsImage]);
+  }, [exportToPdfNative, exportToPdfText]);
 
   return { 
     exportToPdf,
     exportToPdfNative,
-    exportToPdfAsImage 
+    exportToPdfAsImage,
+    exportToPdfText
   };
 };
 
