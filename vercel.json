@@ -1,0 +1,11 @@
+{
+  "buildCommand": "cd exportable-markdown-main && npm install && npm run build",
+  "outputDirectory": "exportable-markdown-main/dist",
+  "installCommand": "cd exportable-markdown-main && npm install",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
