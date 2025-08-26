@@ -1,28 +1,26 @@
 services:
   # Backend API Service
   - type: web
-    name: markdown-editor-api
+    name: exportable-markdown-api
     runtime: node
-    repo: https://github.com/YOUR_USERNAME/YOUR_REPO
-    rootDir: exportable-markdown-node
+    rootDir: ./exportable-markdown-node
     buildCommand: npm install
     startCommand: node index.js
     envVars:
       - key: NODE_ENV
         value: production
-      - key: MONGODB_URI
-        sync: false
       - key: PORT
-        value: 10000
+        value: 3001
+      - key: MONGODB_URI
+        sync: false # You'll set this in Render dashboard
       - key: CORS_ORIGIN
-        sync: false
+        sync: false # Will be set to your frontend URL
 
   # Frontend Static Site
   - type: web
-    name: markdown-editor-frontend
+    name: exportable-markdown-frontend
     runtime: static
-    repo: https://github.com/YOUR_USERNAME/YOUR_REPO
-    rootDir: exportable-markdown-main
+    rootDir: ./exportable-markdown-main
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
     headers:
@@ -31,4 +29,4 @@ services:
         value: SAMEORIGIN
     envVars:
       - key: VITE_API_URL
-        sync: false
+        sync: false # Will be set to your backend URL
