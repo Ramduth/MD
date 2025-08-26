@@ -315,27 +315,38 @@ export const useExportPdf = () => {
     try {
       let dataUrl: string;
       
+      // Detect if mobile for optimization
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
       try {
-        // Try html2canvas first (more reliable) with higher quality
+        // Use lower scale for mobile to prevent memory issues
+        const scale = isMobile ? 1.5 : 2;
+        
+        // Try html2canvas first (more reliable) with optimized settings for mobile
         const canvas = await html2canvas(previewElement, {
           backgroundColor: '#ffffff',
-          scale: 2, // Higher scale for better quality
+          scale: scale,
           useCORS: true,
           allowTaint: false,
           logging: false,
+          // Mobile-specific optimizations
+          ...(isMobile && {
+            windowWidth: previewElement.scrollWidth,
+            windowHeight: previewElement.scrollHeight,
+          }),
         });
-        dataUrl = canvas.toDataURL('image/png', 1.0);
+        dataUrl = canvas.toDataURL('image/png', isMobile ? 0.8 : 1.0);
       } catch (html2canvasError) {
         console.warn('html2canvas failed, trying fallback settings:', html2canvasError);
-        // Fallback using html2canvas with different settings
+        // Fallback using html2canvas with lower quality for mobile
         const fallbackCanvas = await html2canvas(previewElement, {
           backgroundColor: '#ffffff',
-          scale: 1,
+          scale: isMobile ? 1 : 1.5,
           useCORS: true,
           allowTaint: true,
           logging: false,
         });
-        dataUrl = fallbackCanvas.toDataURL('image/png', 1.0);
+        dataUrl = fallbackCanvas.toDataURL('image/png', isMobile ? 0.7 : 0.9);
       }
 
       // Validate the data URL
@@ -401,11 +412,34 @@ export const useExportPdf = () => {
               pdf.addImage(dataUrl, 'PNG', x, y, width, height);
             }
 
-            // Generate filename and save
+            // Generate filename
             const filename = formatFilename('markdown-export', 'pdf');
-            pdf.save(filename);
-
-            onSuccess?.(filename);
+            
+            // Try to save the PDF
+            try {
+              pdf.save(filename);
+              onSuccess?.(filename);
+            } catch (saveError) {
+              console.error('Direct save failed, trying blob approach:', saveError);
+              
+              // Fallback: Create blob and trigger download manually (better for mobile)
+              const pdfBlob = pdf.output('blob');
+              const link = document.createElement('a');
+              link.href = URL.createObjectURL(pdfBlob);
+              link.download = filename;
+              link.style.display = 'none';
+              document.body.appendChild(link);
+              link.click();
+              
+              // Clean up
+              setTimeout(() => {
+                document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
+              }, 100);
+              
+              onSuccess?.(filename);
+            }
+            
             resolve();
           } catch (error) {
             reject(error);
@@ -426,15 +460,23 @@ export const useExportPdf = () => {
     }
   }, []);
 
-  // Main export function - uses browser's native print (like Puppeteer quality)
+  // Main export function - detects mobile and uses appropriate method
   const exportToPdf = useCallback(async (
     previewElement: HTMLElement,
     onSuccess?: (filename: string) => void,
     onError?: (error: Error) => void
   ) => {
-    // Use native print - this gives Puppeteer-level quality with selectable text
-    await exportToPdfNative(previewElement, onSuccess, onError);
-  }, [exportToPdfNative]);
+    // Check if mobile device
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      // Use image-based PDF for mobile (more reliable)
+      await exportToPdfAsImage(previewElement, onSuccess, onError);
+    } else {
+      // Use native print for desktop (better quality)
+      await exportToPdfNative(previewElement, onSuccess, onError);
+    }
+  }, [exportToPdfNative, exportToPdfAsImage]);
 
   return { 
     exportToPdf,

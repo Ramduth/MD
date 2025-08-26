@@ -71,6 +71,12 @@ const Index = () => {
     if (!content || !previewRef.current) return;
     
     setIsExporting(true);
+    
+    // Show loading message for mobile
+    if (isMobile) {
+      showInfo('Generating PDF...', 'This may take a few seconds on mobile devices');
+    }
+    
     try {
       await exportToPdf(
         previewRef.current,
@@ -79,7 +85,13 @@ const Index = () => {
           showSuccess('PDF exported successfully', filename);
         },
         (error) => {
-          showError('PDF export failed', error.message);
+          console.error('PDF export error:', error);
+          // Provide more helpful error message for mobile
+          if (isMobile) {
+            showError('PDF export failed', 'Try reducing content size or closing other apps');
+          } else {
+            showError('PDF export failed', error.message);
+          }
         }
       );
     } finally {
