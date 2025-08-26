@@ -1,0 +1,10 @@
+services:
+  # Frontend Static Site (Always Free - No payment required)
+  - type: static
+    name: exportable-markdown-frontend
+    rootDir: ./exportable-markdown-main
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_URL
+        sync: false # Will be set to your backend URL

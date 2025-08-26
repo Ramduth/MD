@@ -1,12 +1,21 @@
-# Deploying to Render
+# Deploying to Render (Free Tier)
 
-This guide will walk you through deploying both the backend (Node.js/Express) and frontend (React/Vite) to Render.
+This guide will walk you through deploying both the backend (Node.js/Express) and frontend (React/Vite) to Render using the FREE tier.
 
 ## Prerequisites
 
-1. A [Render account](https://render.com/) (free tier is sufficient)
+1. A [Render account](https://render.com/) - **FREE account, no credit card needed**
 2. A GitHub account
 3. Your code pushed to a GitHub repository
+
+## Important: Avoiding Payment Requirements
+
+Render should NOT ask for payment information for free tier services. If it does:
+
+1. **Make sure you're signed up with a free account** (not a trial)
+2. **Deploy services individually** instead of using Blueprint
+3. **Select "Free" plan explicitly** when creating services
+4. **Use Static Site for frontend** (always free) instead of Web Service
 
 ## Step 1: Push Your Code to GitHub
 
@@ -46,35 +55,42 @@ After deployment, you'll need to set these environment variables in the Render d
 3. Add:
    - `VITE_API_URL`: Your backend URL (will be `https://your-backend-api.onrender.com`)
 
-## Step 3: Alternative - Deploy Services Individually
+## Step 3: RECOMMENDED - Deploy Services Individually (To Avoid Payment)
 
-If you prefer to deploy services separately:
+**This is the best way to ensure you stay on the free tier:**
 
 ### Deploy Backend:
 
-1. Click "New +" → "Web Service"
-2. Connect your GitHub repo
-3. Configure:
+1. Go to [Render Dashboard](https://dashboard.render.com/)
+2. Click "New +" → "Web Service"
+3. Connect your GitHub repo
+4. Configure:
    - **Name**: exportable-markdown-api
    - **Root Directory**: exportable-markdown-node
    - **Runtime**: Node
    - **Build Command**: `npm install`
    - **Start Command**: `npm start`
-4. Add environment variables (as listed above)
-5. Click "Create Web Service"
+   - **Instance Type**: **FREE** (Important: Select the free tier)
+5. Add environment variables:
+   - `MONGODB_URI`: Your MongoDB connection string
+   - `CORS_ORIGIN`: Will add after frontend is deployed
+   - `NODE_ENV`: production
+6. Click "Create Web Service"
 
 ### Deploy Frontend:
 
-1. Click "New +" → "Static Site"
-2. Connect your GitHub repo
+1. Click "New +" → "Static Site" (Static sites are ALWAYS FREE)
+2. Connect your GitHub repo (same repo is fine)
 3. Configure:
    - **Name**: exportable-markdown-frontend
    - **Root Directory**: exportable-markdown-main
    - **Build Command**: `npm install && npm run build`
    - **Publish Directory**: `dist`
 4. Add environment variable:
-   - `VITE_API_URL`: Your backend URL
+   - `VITE_API_URL`: Your backend URL (from step above)
 5. Click "Create Static Site"
+
+**Note:** Static Sites on Render are completely free with no limits!
 
 ## Step 4: MongoDB Setup
 
@@ -148,12 +164,19 @@ CORS_ORIGIN=https://your-frontend.onrender.com
 VITE_API_URL=https://your-backend-api.onrender.com
 ```
 
-## Free Tier Limitations
+## Free Tier Information
 
+### What's Free:
+- **Static Sites**: Always free, unlimited
+- **Web Services**: Free tier available (with limitations)
+- **PostgreSQL**: Free tier available
+- **No credit card required** for free tier
+
+### Free Tier Limitations (Web Services only):
 - Services spin down after 15 minutes of inactivity
 - First request after spin-down takes 30-50 seconds
 - Limited to 750 hours/month of runtime
-- Consider upgrading for production use
+- Perfect for personal projects and testing
 
 ## Next Steps
 
