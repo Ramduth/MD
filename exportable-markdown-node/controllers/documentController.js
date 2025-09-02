@@ -170,6 +170,28 @@ exports.exportDocumentToPdf = async (req, res, next) => {
       </html>
     `;
 
+    // Detect Chrome executable path
+    let executablePath = null;
+    
+    // Try different Chrome executable locations
+    const fs = require('fs');
+    const possiblePaths = [
+      process.env.PUPPETEER_EXECUTABLE_PATH,
+      process.env.CHROME_BIN,
+      '/usr/bin/google-chrome-stable',
+      '/usr/bin/google-chrome',
+      '/usr/bin/chromium-browser',
+      '/usr/bin/chromium'
+    ];
+    
+    for (const path of possiblePaths) {
+      if (path && fs.existsSync(path)) {
+        executablePath = path;
+        console.log(`Using Chrome executable at: ${executablePath}`);
+        break;
+      }
+    }
+
     // Puppeteer launch options optimized for Render
     const puppeteerOptions = {
       headless: 'new',
@@ -181,9 +203,16 @@ exports.exportDocumentToPdf = async (req, res, next) => {
         '--no-first-run',
         '--no-zygote',
         '--single-process',
-        '--disable-gpu'
+        '--disable-gpu',
+        '--disable-web-security',
+        '--disable-features=site-per-process'
       ]
     };
+    
+    // Add executable path if found
+    if (executablePath) {
+      puppeteerOptions.executablePath = executablePath;
+    }
 
     console.log('Launching Puppeteer with options:', puppeteerOptions);
     
