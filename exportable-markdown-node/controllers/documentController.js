@@ -40,8 +40,11 @@ exports.getDocumentById = async (req, res, next) => {
 // @route   POST /api/documents/export/pdf
 // @access  Public
 exports.exportDocumentToPdf = async (req, res, next) => {
+  let browser = null;
+  
   try {
     const { markdown, filename } = req.body;
+    console.log('PDF Export Request received:', { hasMarkdown: !!markdown, hasFilename: !!filename });
 
     if (!markdown) {
       return res.status(400).json({ success: false, error: 'Markdown content is required' });
@@ -73,7 +76,7 @@ exports.exportDocumentToPdf = async (req, res, next) => {
 
     // Convert markdown to HTML
     const html = marked(markdown);
-    console.log('Generated HTML:', html); // Log generated HTML
+    console.log('Generated HTML length:', html.length); // Log HTML length
 
     // Create a complete HTML document with proper styling
     const styledHtml = `
@@ -167,13 +170,33 @@ exports.exportDocumentToPdf = async (req, res, next) => {
       </html>
     `;
 
+    // Puppeteer launch options optimized for Render
+    const puppeteerOptions = {
+      headless: 'new',
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process',
+        '--disable-gpu'
+      ]
+    };
+
+    console.log('Launching Puppeteer with options:', puppeteerOptions);
+    
     // Launch a headless browser
-    const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    browser = await puppeteer.launch(puppeteerOptions);
+    console.log('Puppeteer browser launched successfully');
+    
     const page = await browser.newPage();
+    console.log('New page created');
 
     // Set the HTML content of the page
     await page.setContent(styledHtml, { waitUntil: 'networkidle0' });
-    console.log('Puppeteer page content set.'); // Log after setting content
+    console.log('Page content set successfully');
 
     // Generate PDF with compact margins
     const pdfBuffer = await page.pdf({ 
@@ -186,19 +209,44 @@ exports.exportDocumentToPdf = async (req, res, next) => {
         left: '20mm'
       }
     });
-    console.log('PDF buffer generated.'); // Log after PDF generation
+    console.log('PDF generated successfully, buffer size:', pdfBuffer.length);
 
     // Close the browser
     await browser.close();
-    console.log('Puppeteer browser closed.'); // Log after browser close
+    browser = null;
+    console.log('Puppeteer browser closed successfully');
 
     // Send the PDF as a response
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${pdfFilename}"`);
+    res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
     res.send(pdfBuffer);
+    console.log('PDF sent to client successfully');
 
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: 'Server error' });
+    console.error('PDF Export Error:', err.message);
+    console.error('Full error stack:', err.stack);
+    
+    // Clean up browser if it's still open
+    if (browser) {
+      try {
+        await browser.close();
+        console.log('Browser closed after error');
+      } catch (closeErr) {
+        console.error('Error closing browser:', closeErr);
+      }
+    }
+    
+    // Send more detailed error message
+    const errorMessage = err.message.includes('Failed to launch') 
+      ? 'PDF generation failed. Puppeteer cannot launch Chrome. This is a known issue on Render Free tier.'
+      : err.message;
+    
+    res.status(500).json({ 
+      success: false, 
+      error: errorMessage,
+      details: process.env.NODE_ENV !== 'production' ? err.message : undefined
+    });
   }
 };

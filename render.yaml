@@ -16,3 +16,7 @@ services:
         sync: false # You'll set this in Render dashboard
       - key: CORS_ORIGIN
         sync: false # Will be set to your frontend URL
+      - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
+        value: "false"
+      - key: PUPPETEER_EXECUTABLE_PATH
+        value: /usr/bin/google-chrome-stable
